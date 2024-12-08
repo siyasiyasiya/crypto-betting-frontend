@@ -131,7 +131,34 @@ function App() {
       });
     }
   };
+
+  const getQuestions = async () => {
+    try {
+      const contract = await createGetContract();
+      const questionsFromContract = await contract.getQuestions();
+      const formattedQuestions = questionsFromContract.map((item) => ({
+        questionId: item.questionId.toNumber(),
+        question: item.question,
+        deadline: new Date(item.deadline.toNumber() * 1000).toLocaleString(), 
+      }));
+      setQuestions(formattedQuestions);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      toast.error("Failed to fetch questions.");
+    }
+  };
   
+  const getOptions = async (questionId) => {
+    try {
+      const contract = await createGetContract();
+      const optionsFromContract = await contract.getOptions(questionId);
+      setOption(optionsFromContract);
+    } catch (error) {
+      console.error("Error fetching options:", error);
+      toast.error("Failed to fetch options for this question.");
+    }
+  };
+
   const runBet = async (evt) => {
     evt.preventDefault();
     const contract = await createWriteContract();
