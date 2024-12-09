@@ -26,7 +26,7 @@ function App() {
   const [betid, setBId] = useState(0);
   const [address, setAddress] = useState("");
   const [balance, setBalance] = useState(0);
-  const betAddress = "0xa04F0bB994775bDe9f642F02A7A814cCDf5ee571";
+  const betAddress = "0x01ce4a5cb3a70edcea8aa933cba521d57693b58d";
 
   const createWriteContract = async () => {
     const { ethereum } = window;
