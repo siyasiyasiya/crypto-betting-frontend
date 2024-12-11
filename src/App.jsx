@@ -3,8 +3,8 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import betABI from "../abi/bet.json";
 import { ethers } from "ethers";
-import { toast } from "react-toastify";
 import { useState, useRef, useEffect } from "react";
+import { toast,ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function App() {
@@ -39,9 +39,9 @@ function App() {
       const userAddress = accounts[0];
       setAddress(userAddress);
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const provider = new ethers.providers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(userAddress);
-      setBalance(balance.toString());
+      setBalance(ethers.formatEther(balance));
 
       toast.success("Wallet connected successfully!");
     } catch (error) {
@@ -50,9 +50,28 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", (accounts) => {
+        if (accounts.length > 0) {
+          setAddress(accounts[0]);
+          connectWallet();
+        } else {
+          setAddress("");
+          setBalance(0);
+          toast.warn("Wallet disconnected.");
+        }
+      });
+
+      window.ethereum.on("chainChanged", () => {
+        window.location.reload();
+      });
+    }
+  }, []);
+
   const createWriteContract = async () => {
     const { ethereum } = window;
-    const provider = new ethers.providers.Web3Provider(ethereum)
+    const provider = new ethers.BrowserProvider(ethereum);
     const signer = await provider.getSigner();
     const betContract = new ethers.Contract(betAddress, betABI.abi, signer);
     return betContract;
@@ -60,66 +79,84 @@ function App() {
   
   const createGetContract = async () => {
     const { ethereum } = window;
-    const provider = new ethers.providers.Web3Provider(ethereum)
+    const provider = new ethers.BrowserProvider(ethereum);
     const betContract = new ethers.Contract(betAddress, betABI.abi, provider);
     return betContract;
   };
   
   const createQuestion = async (evt) => {
     evt.preventDefault();
-    const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
   
+    const contract = await createWriteContract();
+    const toastId = toast.loading("Transaction in progress..");
+
     try {
+
       const dateInSecs = Math.floor(new Date(deadlineRef.current.value).getTime() / 1000);
       const tx = await contract.setQuestion(questionRef.current.value, dateInSecs);
+
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
+
+      toast.update(toastId, {
         render: "Transaction successfull",
         type: "success",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+
     } catch (error) {
       console.log(error);
-      toast.update(id, {
-        render: `${error.reason}`,
+
+      toast.update(toastId, {
+        render: `${error.reason}` || "Transaction failed. Please try again.",
         type: "error",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
     }
   };
   
   const setOptions = async (evt) => {
     evt.preventDefault();
+  
     const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
+    const toastId = toast.loading("Transaction in progress...");
+
     try {
-      const tx = await contract.setOptions(questionIdRef.current.value, [option1Ref.current.value, option2Ref.current.value])
+      const tx = await contract.setOptions(
+        questionIdRef.current.value,
+        [option1Ref.current.value, option2Ref.current.value]
+      );
+  
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
-        render: "Transaction successfull",
+  
+      toast.update(toastId, {
+        render: "Transaction successful!",
         type: "success",
         isLoading: false,
-        autoClose: 10000,
+        autoClose: 5000,
         closeButton: true,
       });
+  
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+      
     } catch (error) {
-      console.log(error);
-      toast.update(id, {
-        render: `${error.reason}`,
+      console.error("Error setting options:", error);
+  
+      toast.update(toastId, {
+        render: `${error.reason}` || "Transaction failed. Please try again.",
         type: "error",
         isLoading: false,
-        autoClose: 10000,
+        autoClose: 5000,
         closeButton: true,
       });
     }
@@ -127,25 +164,35 @@ function App() {
   
   const setAnswer = async (evt) => {
     evt.preventDefault();
+
     const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
+    const toastId = toast.loading("Transaction in progress...");
+
     try {
+
       const tx = await contract.setAnswer(questionIdRef2.current.value, answerRef.current.value)
+
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
+
+     
+      toast.update(toastId, {
         render: "Transaction successfull",
         type: "success",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+
     } catch (error) {
+
       console.log(error);
-      toast.update(id, {
-        render: `${error.reason}`,
+
+      toast.update(toastId, {
+        render: `${error.reason}` || "Transaction failed. Please try again.",
         type: "error",
         isLoading: false,
         autoClose: 10000,
@@ -158,15 +205,20 @@ function App() {
     try {
       const contract = await createGetContract();
       const questionsFromContract = await contract.getQuestions();
+
       const formattedQuestions = questionsFromContract.map((item) => ({
-        questionId: item.questionId.toNumber(),
+        questionId: Number(item.questionId),
         question: item.question,
-        deadline: new Date(item.deadline.toNumber() * 1000).toLocaleString(), 
+        deadline: new Date(Number(item.deadline) * 1000).toLocaleString(), 
       }));
+
       setQuestions(formattedQuestions);
+
     } catch (error) {
+
       console.error("Error fetching questions:", error);
       toast.error("Failed to fetch questions.");
+
     }
   };
   
@@ -174,7 +226,10 @@ function App() {
     try {
       const contract = await createGetContract();
       const optionsFromContract = await contract.getOptions(questionId);
-      setOption(optionsFromContract);
+      const formattedOptions = optionsFromContract.map((option) => option.toString());
+
+      setOption(formattedOptions);
+
     } catch (error) {
       console.error("Error fetching options:", error);
       toast.error("Failed to fetch options for this question.");
@@ -183,53 +238,70 @@ function App() {
 
   const runBet = async (evt) => {
     evt.preventDefault();
+    
     const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
+    const toastId = toast.loading("Transaction in progress..");
+
     try {
-      const tx = await contract.runBet(questionIdRef3.current.id);
+
+      const tx = await contract.runBet(questionIdRef3.current.value);
+
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
+      
+      toast.update(toastId, {
         render: "Transaction successfull",
         type: "success",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+
     } catch (error) {
+
       console.log(error);
-      toast.update(id, {
+
+      toast.update(toastId, {
         render: `${error.reason}`,
         type: "error",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
     }
   };
 
   const placeBet = async (evt) => {
     evt.preventDefault();
+
     const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
+    const toastId = toast.loading("Transaction in progress..");
+
     try {
-      const tx = await contract.placeBet(id, answerRef1.current.id);
+
+      const tx = await contract.placeBet(id, answerRef1.current.value);
+
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
+    
+      toast.update(toastId, {
         render: "Transaction successfull",
         type: "success",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+
     } catch (error) {
       console.log(error);
-      toast.update(id, {
+      toast.update(toastId, {
         render: `${error.reason}`,
         type: "error",
         isLoading: false,
@@ -241,24 +313,27 @@ function App() {
    
   const withdrawWin = async (evt) => {
     evt.preventDefault();
+
     const contract = await createWriteContract();
-    const id = toast.loading("Transaction in progress..");
+    const toastId = toast.loading("Transaction in progress..");
+
     try {
-      const tx = await contract.withdrawWin(questionIdRef4.current.id);
+
+      const tx = await contract.withdrawWin(questionIdRef4.current.value);
+
       await tx.wait();
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 10000);
-      toast.update(id, {
+
+      toast.update(toastId, {
         render: "Transaction successfull",
         type: "success",
         isLoading: false,
         autoClose: 10000,
         closeButton: true,
       });
+
     } catch (error) {
       console.log(error);
-      toast.update(id, {
+      toast.update(toastId, {
         render: `${error.reason}`,
         type: "error",
         isLoading: false,
@@ -269,13 +344,24 @@ function App() {
   };
 
   const getBalance = async () => {
-    const { ethereum } = window;
-    const provider = new ethers.providers.Web3Provider(ethereum);
-    const signer = await provider.getSigner();
-    const address = await signer.getAddress()
-    const balance = await provider.getBalance(address);
-    setBalance(Number(balance));
-    setAddress(address);
+    try {
+      if (!window.ethereum) {
+        toast.error("MetaMask is not installed. Please install it to use this dApp.");
+        return;
+      }
+  
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+  
+      const address = await signer.getAddress();
+      const balance = await provider.getBalance(address);
+  
+      setBalance(ethers.formatEther(balance));
+      setAddress(address);
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+      toast.error("Failed to fetch balance. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -361,6 +447,8 @@ function App() {
         <input ref={questionIdRef4} className="input" placeholder="Question Id" />
         <button onClick={withdrawWin} className="button">Withdraw</button>
       </div>
+
+      <ToastContainer/>
     </>
   );
 }
