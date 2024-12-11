@@ -1,42 +1,116 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+body {
+  font-family: Arial, sans-serif;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; 
+  align-items: center; 
+  min-height: 100vh;
+  margin: 0;
+  background-color: #f9f9f9;
+}
+
+#root, .container {
+  width: 60%; /* Ensure the root div takes up the full width */
+  max-width: none; /* Remove any max-width restrictions */
+  margin: 0 auto; /* Center horizontally if needed */
+}
+
+h1 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin: 20px 0;
+  color: #333;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background-color: #eaeaea;
+  border-bottom: 1px solid #ddd;
+}
+
+.user-info div {
+  font-size: 1rem;
+  color: #333;
+}
+
+.section {
+  background-color: #fff;
+  margin: 20px auto;
+  padding: 20px;
+  width: 95%;
+  max-width: 1400px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.section h2 {
+  margin-bottom: 15px;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.input {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 10px auto;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.textarea {
+  height: 80px;
+  resize: none;
+}
+
+.button {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 15px;
+  font-size: 1rem;
+  color: #fff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.3s ease;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+/* Options Container */
+.options-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.options-container .button {
+  flex: 1;
+  margin: 0 5px;
+}
+
+@media (max-width: 1008px) {
+  .section {
+    width: 100%;
   }
-  to {
-    transform: rotate(360deg);
+  .options-container {
+    flex-direction: column;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  .options-container .button {
+    margin: 5px 0;
   }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }

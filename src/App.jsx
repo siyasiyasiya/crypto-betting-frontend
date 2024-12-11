@@ -28,6 +28,28 @@ function App() {
   const [balance, setBalance] = useState(0);
   const betAddress = "0x01ce4a5cb3a70edcea8aa933cba521d57693b58d";
 
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      toast.error("MetaMask is not installed. Please install it to use this dApp.");
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const userAddress = accounts[0];
+      setAddress(userAddress);
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const balance = await provider.getBalance(userAddress);
+      setBalance(balance.toString());
+
+      toast.success("Wallet connected successfully!");
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      toast.error("Failed to connect wallet. Please try again.");
+    }
+  };
+
   const createWriteContract = async () => {
     const { ethereum } = window;
     const provider = new ethers.providers.Web3Provider(ethereum)
@@ -222,7 +244,7 @@ function App() {
     const contract = await createWriteContract();
     const id = toast.loading("Transaction in progress..");
     try {
-      const tx = await contract.runBet(questionIdRef4.current.id);
+      const tx = await contract.withdrawWin(questionIdRef4.current.id);
       await tx.wait();
       setTimeout(() => {
         window.location.href = "/";
@@ -265,66 +287,82 @@ function App() {
   return (
     <>
       <h1>DecentralizedBetting</h1>
-
-      <div className='options2'>
-        <div>User - {address}</div>
-        <div>Balance - {balance / 10 ** 18} ether</div>
+  
+      <div className="user-info">
+        <div>User - {address ? address : "Not Connected"}</div>
+        <div>Balance - {balance / 10 ** 18 || 0} ether</div>
       </div>
+  
+      <button onClick={connectWallet} className="button">
+          {address ? "Connected" : "Connect Wallet"}
+      </button>
 
-      <div>
-        <div>
-          <div className='text1'>Create New Question (Admin)</div>
-          <textarea ref={questionRef} className='textarea'>
-          </textarea>
-          <input type='datetime-local' ref={deadlineRef} className='input1' placeholder='Enter Deadline' />
-          <button onClick={createQuestion} className='but1'>Create Question</button>
+      <div className="section">
+        <h2>Create New Question (Admin)</h2>
+        <textarea ref={questionRef} className="input textarea" placeholder="Enter your question"></textarea>
+        <input
+          type="datetime-local"
+          ref={deadlineRef}
+          className="input"
+          placeholder="Enter Deadline"
+        />
+        <button onClick={createQuestion} className="button">Create Question</button>
+      </div>
+  
+      <div className="section">
+        <h2>Add Options to Question (Admin)</h2>
+        <input ref={questionIdRef} className="input" placeholder="Question Id" />
+        <input ref={option1Ref} className="input" placeholder="Option 1" />
+        <input ref={option2Ref} className="input" placeholder="Option 2" />
+        <button onClick={setOptions} className="button">Add Options</button>
+      </div>
+  
+      <div className="section">
+        <h2>Update Answer to Question (Admin)</h2>
+        <input ref={questionIdRef2} className="input" placeholder="Question Id" />
+        <input ref={answerRef} className="input" placeholder="Option Id" />
+        <button onClick={setAnswer} className="button">Update Answer</button>
+      </div>
+  
+      <div className="section">
+        <h2>Get Winners (Admin)</h2>
+        <input ref={questionIdRef3} className="input" placeholder="Question Id" />
+        <button onClick={runBet} className="button">Get Winners</button>
+      </div>
+  
+      <div className="section">
+        <h2>Place Bet</h2>
+        <select ref={selectRef} onChange={() => setId(selectRef.current.value)} className="input">
+          {questions.map((item, index) => (
+            <option key={index} value={item.questionId}>
+              {String(item.question)}
+            </option>
+          ))}
+        </select>
+        <input
+          ref={answerRef1}
+          className="input"
+          value={betid}
+          placeholder="Option Id"
+          onChange={(e) => setBId(e.target.value)}
+        />
+        <div className="options-container">
+          {options.map((option, index) => (
+            <button key={index} onClick={() => setBId(index)} className="button">
+              {option}
+            </button>
+          ))}
         </div>
-        <div className='options'>
-          <div className='text1'>Add Options to Question (Admin)</div>
-          <input ref={questionIdRef} className='input1' placeholder='Question Id' />
-          <input ref={option1Ref} className='input1' placeholder='Option 1' />
-          <input ref={option2Ref} className='input1' placeholder='Option 2' />
-          <button onClick={setOptions} className='but1'>Add Options</button>
-        </div>
-        <div className='options'>
-          <div className='text1'>Update Answer to Question (Admin)</div>
-          <input ref={questionIdRef2} className='input1' placeholder='Question Id' />
-          <input ref={answerRef} className='input1' placeholder='Option Id' />
-          <button onClick={setAnswer} className='but1'>Update Answer</button>
-        </div>
-
-        <div className='options'>
-          <div className='text1'>Get Winners (Admin)</div>
-          <input ref={questionIdRef3} className='input1' placeholder='Question Id' />
-          <button onClick={runBet} className='but1'>Get winners</button>
-        </div>
-
-        <div className='options'>
-          <div className='text1'>Place Bet</div>
-          <select ref={selectRef} onChange={() => setId(selectRef.current.value)} className='input1' name="cars" id="cars">
-            {
-              questions.map((item, index) => {
-                return <option key={index} value={item.questionId}>{String(item.question)}</option>
-              })
-            }
-          </select>
-          <input ref={answerRef1} className='input1' value={betid} placeholder='Option Id' />
-          <div className='placebet'>
-            <button onClick={() => setBId(0)} className='but1'>{options[0]}</button>
-            <button onClick={() => setBId(1)} className='but1'>{options[1]}</button>
-          </div>
-          <button onClick={placeBet} className='but1'>Place Bet</button>
-        </div>
-
-        <div className='options'>
-          <div className='text1'>Withdraw Winnings</div>
-          <input ref={questionIdRef4} className='input1' placeholder='Question Id' />
-          <button onClick={withdrawWin} className='but1'>Withdraw</button>
-        </div>
-
+        <button onClick={placeBet} className="button">Place Bet</button>
+      </div>
+  
+      <div className="section">
+        <h2>Withdraw Winnings</h2>
+        <input ref={questionIdRef4} className="input" placeholder="Question Id" />
+        <button onClick={withdrawWin} className="button">Withdraw</button>
       </div>
     </>
-  )
+  );
 }
   
 
