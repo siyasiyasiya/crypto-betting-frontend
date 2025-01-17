@@ -33,26 +33,35 @@ function App() {
       toast.error("MetaMask is not installed. Please install it to use this dApp.");
       return;
     }
-
+  
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      if (accounts.length === 0) {
+        toast.warn("No accounts found. Please connect your wallet.");
+        return;
+      }
+  
       const userAddress = accounts[0];
       setAddress(userAddress);
-
-      const provider = new ethers.providers.BrowserProvider(window.ethereum);
+  
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(userAddress);
       setBalance(ethers.formatEther(balance));
-
+  
       toast.success("Wallet connected successfully!");
     } catch (error) {
-      console.error("Error connecting wallet:", error);
-      toast.error("Failed to connect wallet. Please try again.");
+      if (error.code === 4001) {
+        toast.error("Connection request denied by user.");
+      } else {
+        console.error("Error connecting wallet:", error);
+        toast.error("Failed to connect wallet. Please try again.");
+      }
     }
   };
 
   useEffect(() => {
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", (accounts) => {
+      const handleAccountsChanged = (accounts) => {
         if (accounts.length > 0) {
           setAddress(accounts[0]);
           connectWallet();
@@ -61,27 +70,52 @@ function App() {
           setBalance(0);
           toast.warn("Wallet disconnected.");
         }
-      });
-
-      window.ethereum.on("chainChanged", () => {
+      };
+  
+      const handleChainChanged = () => {
         window.location.reload();
-      });
+      };
+  
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
+  
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      };
     }
   }, []);
 
   const createWriteContract = async () => {
-    const { ethereum } = window;
-    const provider = new ethers.BrowserProvider(ethereum);
-    const signer = await provider.getSigner();
-    const betContract = new ethers.Contract(betAddress, betABI.abi, signer);
-    return betContract;
-  };
+    try {
+      const { ethereum } = window;
+      if (!ethereum) {
+        throw new Error("MetaMask is not installed.");
+      }
   
+      const provider = new ethers.BrowserProvider(ethereum);
+      const signer = await provider.getSigner();
+      return new ethers.Contract(betAddress, betABI.abi, signer);
+    } catch (error) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
   const createGetContract = async () => {
-    const { ethereum } = window;
-    const provider = new ethers.BrowserProvider(ethereum);
-    const betContract = new ethers.Contract(betAddress, betABI.abi, provider);
-    return betContract;
+    try {
+      const { ethereum } = window;
+      if (!ethereum) {
+        throw new Error("MetaMask is not installed.");
+      }
+  
+      const provider = new ethers.BrowserProvider(ethereum);
+      const betContract = new ethers.Contract(betAddress, betABI.abi, provider);
+      return betContract;
+    } catch (error) {
+      toast.error(error.message);
+      throw error;
+    }
   };
   
   const createQuestion = async (evt) => {
@@ -206,6 +240,14 @@ function App() {
       const contract = await createGetContract();
       const questionsFromContract = await contract.getQuestions();
 
+      if (!questionsFromContract || questionsFromContract.length === 0) {
+        toast.info("No questions available."); 
+        setQuestions([]);
+        return;
+      } else {
+        console.log(questionsFromContract)
+      }
+
       const formattedQuestions = questionsFromContract.map((item) => ({
         questionId: Number(item.questionId),
         question: item.question,
@@ -223,6 +265,11 @@ function App() {
   };
   
   const getOptions = async (questionId) => {
+    if (!questionId) {
+      toast.warn("Please select a valid question before fetching options.");
+      return;
+    }
+
     try {
       const contract = await createGetContract();
       const optionsFromContract = await contract.getOptions(questionId);
@@ -365,10 +412,22 @@ function App() {
   };
 
   useEffect(() => {
-    getQuestions();
-    getOptions();
-    getBalance();
-  }, [id]);
+  if (!id) return;
+
+  const fetchData = async () => {
+    try {
+      console.log(id)
+      await getQuestions(); 
+      await getOptions(id); 
+      await getBalance();   
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  fetchData();
+}, [id]);
+
 
   return (
     <>
